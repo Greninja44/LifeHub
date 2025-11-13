@@ -2,22 +2,23 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const mongoose = require('mongoose');
 const tasksRouter = require('../routes/tasks');
+const connectDB = require('./db');
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- MongoDB Connection ---
-mongoose.connect('mongodb://127.0.0.1:27017/lifehub')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ Connection error:', err));
+connectDB();
 
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
 app.use('/api/tasks', tasksRouter);
+
+// Serve static frontend assets from public/
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // --- Routes ---
 app.get('/api/health', (req, res) => {
@@ -30,6 +31,22 @@ app.get('/', (req, res) => {
 });
 
 // --- Start Server ---
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 LifeHub server running at http://localhost:${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nShutting down server...');
+  server.close(async () => {
+    console.log('HTTP server closed');
+    try {
+      const mongoose = require('mongoose');
+      await mongoose.connection.close(false);
+      console.log('MongoDB connection closed');
+    } catch (err) {
+      console.error('Error closing MongoDB connection', err);
+    }
+    process.exit(0);
+  });
 });

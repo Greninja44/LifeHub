@@ -5,11 +5,10 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/lifehu
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log('MongoDB connected:', MONGODB_URI);
+    // Modern mongoose (v6+) no longer requires useNewUrlParser/useUnifiedTopology
+  await mongoose.connect(MONGODB_URI);
+  // keep the original success message (check mark) for compatibility with logs
+  console.log('✅ MongoDB connected:', MONGODB_URI);
   } catch (err) {
     console.error('MongoDB connection error:', err.message || err);
     process.exit(1);
