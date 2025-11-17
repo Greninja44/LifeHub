@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LifeHub — Pomodoro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:16px;flex-direction:column;align-items:flex-start">
+        <h1 style="margin:0">LifeHub — Pomodoro</h1>
+        <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-top:6px">Focus timer with simple controls and clean visuals</div>
+      </div>
+        <div style="display:flex;align-items:center;gap:12px">
+        <div class="theme-toggle">
+          <span class="small-muted">Theme</span>
+          <div id="themeToggle" class="toggle" title="Toggle theme">
+            <div class="knob"></div>
+          </div>
+        </div>
+        <div class="links"><a class="pill" href="/">Study Plan</a> <a class="pill" href="/tasks.html">Tasks</a> <a class="pill" href="/budgets.html">Budgets</a></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pomodoro Timer</h2>
+      <div class="pomodoro">
+        <div class="ring-wrap">
+          <svg class="ring-svg" width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none"></circle>
+            <circle id="timerCircle" cx="60" cy="60" r="52" stroke="url(#g)" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"></circle>
+            <defs><linearGradient id="g"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs>
+          </svg>
+        </div>
+        <div class="time-display" id="timerDisplay">25:00</div>
+        <div class="mode-badge" id="timerMode">Work</div>
+        <div class="timer-controls">
+          <button id="timerStart" class="btn-primary">Start</button>
+          <button id="timerPause" class="btn-ghost">Pause</button>
+          <button id="timerReset" class="btn-danger">Reset</button>
+        </div>
+        <div class="small-muted">Work: <input id="workMins" type="number" min="1" value="25" style="width:60px"/> mins • Break: <input id="breakMins" type="number" min="1" value="5" style="width:60px"/> mins</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle (persist)
+    (function(){
+      const toggle = document.getElementById('themeToggle');
+      const apply = (mode)=>{
+        if(mode==='light'){ document.body.classList.add('light'); toggle.classList.add('light'); } else { document.body.classList.remove('light'); toggle.classList.remove('light'); }
+      };
+      let mode = localStorage.getItem('lifehub_theme') || 'dark'; apply(mode);
+      toggle.addEventListener('click', ()=>{ mode = (mode==='dark')? 'light' : 'dark'; localStorage.setItem('lifehub_theme', mode); apply(mode); });
+    })();
+
+    // Pomodoro timer logic
+    (function(){
+      const display = document.getElementById('timerDisplay');
+      const modeEl = document.getElementById('timerMode');
+      const circle = document.getElementById('timerCircle');
+      const startBtn = document.getElementById('timerStart');
+      const pauseBtn = document.getElementById('timerPause');
+      const resetBtn = document.getElementById('timerReset');
+      const workInput = document.getElementById('workMins');
+      const breakInput = document.getElementById('breakMins');
+
+      let total = 25*60; let remain = total; let running=false; let mode='work'; let timerId=null;
+      const fullLen = 2 * Math.PI * 52; // r=52
+      function format(s){ const m = Math.floor(s/60); const ss = s%60; return String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0'); }
+      function updateCircle(){ const pct = 1 - (remain/total || 0); const offset = Math.round(fullLen * (1-pct)); circle.style.strokeDashoffset = offset; }
+      function tick(){ if(remain>0){ remain--; updateDisplay(); } else { // switch modes
+          if(mode==='work'){ mode='break'; total = Number(breakInput.value||5)*60; } else { mode='work'; total = Number(workInput.value||25)*60; }
+          remain = total; modeEl.textContent = mode==='work' ? 'Work' : 'Break';
+      }}
+      function updateDisplay(){ display.textContent = format(remain); updateCircle(); }
+      function start(){ if(running) return; running=true; timerId = setInterval(tick,1000); }
+      function pause(){ running=false; if(timerId) clearInterval(timerId); timerId=null; }
+      function reset(){ pause(); mode='work'; total = Number(workInput.value||25)*60; remain = total; modeEl.textContent='Work'; updateDisplay(); }
+
+      startBtn.addEventListener('click', ()=>{ start(); });
+      pauseBtn.addEventListener('click', ()=>{ pause(); });
+      resetBtn.addEventListener('click', ()=>{ reset(); });
+      workInput.addEventListener('change', ()=>{ if(mode==='work'){ total = Number(workInput.value||25)*60; remain = total; updateDisplay(); }});
+      breakInput.addEventListener('change', ()=>{ if(mode==='break'){ total = Number(breakInput.value||5)*60; remain = total; updateDisplay(); }});
+
+      // init
+      circle.style.strokeDasharray = fullLen;
+      circle.style.strokeDashoffset = 0;
+      reset();
+    })();
+  </script>
+</body>
+</html>

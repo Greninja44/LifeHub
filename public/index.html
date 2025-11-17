@@ -1,12 +1,162 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <title>LifeHub</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LifeHub — Study Plan</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <h1>LifeHub</h1>
-  <p>Server is running. Check <code>/api/health</code>.</p>
-  <p><a href="/tasks.html">Go to Tasks (not created yet)</a></p>
+  <div class="container">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:16px;flex-direction:column;align-items:flex-start">
+        <h1 style="margin:0">Study Plan</h1>
+        <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-top:6px">Organize study plans, track progress, and stay focused</div>
+      </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="theme-toggle">
+            <span class="small-muted">Theme</span>
+            <div id="themeToggle" class="toggle" title="Toggle theme">
+              <div class="knob"></div>
+            </div>
+          </div>
+          <div class="links"><a class="pill" href="/">Study Plan</a> <a class="pill" href="/tasks.html">Tasks</a> <a class="pill" href="/pomodoro.html">Pomodoro</a> <a class="pill" href="/budgets.html">Budgets</a></div>
+        </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <section>
+            <h2>Study Plans</h2>
+            <div class="template-row">
+              <select id="templateSelect" class="template-select">
+                <option value="">— Choose template —</option>
+                <option value="pomodoro">Pomodoro (25m focus)</option>
+                <option value="exam">Exam Prep (4 weeks)</option>
+                <option value="language">Language Routine (90 days)</option>
+              </select>
+              <button id="applyTemplate" class="icon-btn">Apply</button>
+            </div>
+            <ul id="study"></ul>
+            <form id="spForm">
+              <input id="spTitle" placeholder="Study plan title" required />
+              <button class="btn-primary">Add Study Plan</button>
+            </form>
+          </section>
+        </div>
+
+        <div class="card">
+          <section>
+            <h2>Insights</h2>
+            <ul id="insights"></ul>
+            <form id="insForm">
+              <input id="insText" placeholder="Write a quick insight" required />
+              <button class="btn-primary">Add</button>
+            </form>
+          </section>
+        </div>
+      </div>
+
+      <!-- Budgets removed from dashboard — use /budgets.html -->
+    </div>
+
+    <!-- Pomodoro moved to its own page: /pomodoro.html -->
+  </div>
+
+  <script>
+    async function fetchJSON(url, opts){
+      const r = await fetch(url, opts);
+      return r.json();
+    }
+
+    // Tasks are moved to /tasks.html (loadTasks exists there)
+
+    // Study plans
+    async function loadStudy(){
+      const res = await fetchJSON('/api/studyplans');
+      const el = document.getElementById('study'); el.innerHTML='';
+      (res.data||[]).forEach((s,idx)=>{
+        const li = document.createElement('li'); li.className='item';
+        const left = document.createElement('div'); left.style.flex='1';
+        const title = document.createElement('div'); title.textContent = s.title;
+        const progressWrap = document.createElement('div'); progressWrap.className='progress-wrap';
+        const progressBar = document.createElement('div'); progressBar.className='progress-bar'; progressBar.style.width = (s.progress||0) + '%';
+        progressWrap.appendChild(progressBar);
+        left.appendChild(title); left.appendChild(progressWrap);
+
+        const right = document.createElement('div'); right.className='actions';
+        const inc = document.createElement('button'); inc.className='icon-btn'; inc.textContent='+10%'; inc.onclick=async ()=>{ const p = Math.min(100,(s.progress||0)+10); await fetch('/api/studyplans/'+s._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({progress:p})}); loadAll(); };
+        const dec = document.createElement('button'); dec.className='icon-btn'; dec.textContent='-10%'; dec.onclick=async ()=>{ const p = Math.max(0,(s.progress||0)-10); await fetch('/api/studyplans/'+s._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({progress:p})}); loadAll(); };
+        const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=async ()=>{ if(confirm('Delete this study plan?')){ await fetch('/api/studyplans/'+s._id,{method:'DELETE'}); loadAll(); }};
+        right.appendChild(inc); right.appendChild(dec); right.appendChild(del);
+        li.appendChild(left); li.appendChild(right);
+        el.appendChild(li);
+        // animate progress after append
+        requestAnimationFrame(()=> setTimeout(()=> li.classList.add('visible'), idx*30));
+      });
+    }
+
+    // Budgets removed from dashboard — budget management moved to /budgets.html
+
+    // Insights
+    async function loadInsights(){
+      const res = await fetchJSON('/api/insights');
+      const el = document.getElementById('insights'); el.innerHTML='';
+      const list = (res.data||[]);
+      document.getElementById('insights').style.display = list.length? 'block' : 'none';
+      list.forEach((i,idx)=>{
+        const li = document.createElement('li'); li.className='item';
+        const left = document.createElement('div'); left.textContent = i.text;
+        const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=async ()=>{ if(confirm('Delete this insight?')){ await fetch('/api/insights/'+i._id,{method:'DELETE'}); loadAll(); }};
+        li.appendChild(left); li.appendChild(del);
+        el.appendChild(li);
+        requestAnimationFrame(()=> setTimeout(()=> li.classList.add('visible'), idx*20));
+      });
+      if(!list.length){ const note = document.createElement('div'); note.className='empty'; note.textContent='No insights — jot down a thought.'; el.parentNode.insertBefore(note, el.nextSibling); }
+    }
+
+    // Pomodoro moved to /pomodoro.html (timer logic exists there)
+
+    async function loadAll(){ await Promise.all([loadStudy(), loadInsights()]); }
+
+    // Theme toggle (dark/light) - persisted in localStorage
+    (function(){
+      const toggle = document.getElementById('themeToggle');
+      const knob = toggle.querySelector('.knob');
+      const apply = (mode)=>{
+        if(mode==='light'){
+          document.body.classList.add('light');
+          toggle.classList.add('light');
+        } else {
+          document.body.classList.remove('light');
+          toggle.classList.remove('light');
+        }
+      };
+      let mode = localStorage.getItem('lifehub_theme') || 'dark';
+      apply(mode);
+      toggle.addEventListener('click', ()=>{
+        mode = (mode==='dark')? 'light' : 'dark';
+        localStorage.setItem('lifehub_theme', mode);
+        apply(mode);
+      });
+    })();
+    document.getElementById('spForm').addEventListener('submit', async e=>{ e.preventDefault(); const title = document.getElementById('spTitle').value; await fetch('/api/studyplans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title})}); document.getElementById('spTitle').value=''; loadAll(); });
+    // Apply template
+    document.getElementById('applyTemplate').addEventListener('click', async ()=>{
+      const t = document.getElementById('templateSelect').value;
+      if(!t) return alert('Choose a template');
+      let payload = { title: 'New Study Plan', description: '' };
+      if(t==='pomodoro') payload = { title: 'Pomodoro Session', description: '25/5 cycles', sessions: 8, progress: 0 };
+      if(t==='exam') payload = { title: 'Exam Prep - 4 weeks', description: 'Daily study blocks', sessions: 28, progress: 0 };
+      if(t==='language') payload = { title: 'Language Routine - 90 days', description: 'Daily practice', sessions: 90, progress: 0 };
+      await fetch('/api/studyplans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      document.getElementById('templateSelect').value=''; loadAll();
+    });
+    // budget form removed from dashboard
+    document.getElementById('insForm').addEventListener('submit', async e=>{ e.preventDefault(); const text = document.getElementById('insText').value; await fetch('/api/insights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}); document.getElementById('insText').value=''; loadAll(); });
+
+    loadAll();
+  </script>
 </body>
 </html>

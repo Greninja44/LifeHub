@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LifeHub — Tasks</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:16px;flex-direction:column;align-items:flex-start">
+        <h1 style="margin:0">LifeHub — Tasks</h1>
+        <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-top:6px">Quickly add, search and manage your tasks</div>
+      </div>
+        <div style="display:flex;align-items:center;gap:12px">
+        <div class="theme-toggle">
+          <span class="small-muted">Theme</span>
+          <div id="themeToggle" class="toggle" title="Toggle theme">
+            <div class="knob"></div>
+          </div>
+        </div>
+        <div class="links"><a class="pill" href="/">Study Plan</a> <a class="pill" href="/pomodoro.html">Pomodoro</a> <a class="pill" href="/budgets.html">Budgets</a></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <section>
+        <h2>Tasks</h2>
+        <form id="taskForm">
+          <input id="tTitle" placeholder="New task title" required />
+          <button class="btn-primary">Add Task</button>
+        </form>
+        <div style="display:flex;gap:12px;margin-top:12px;align-items:center">
+          <input id="search" class="search" placeholder="Search tasks..." />
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="active">Active</button>
+            <button class="filter-btn" data-filter="completed">Done</button>
+          </div>
+        </div>
+        <ul id="tasks" style="margin-top:12px"></ul>
+        <div id="tasksEmpty" class="empty" style="display:none">No tasks yet — add one above.</div>
+      </section>
+    </div>
+
+  </div>
+
+  <script>
+    async function fetchJSON(url, opts){ const r = await fetch(url, opts); return r.json(); }
+
+    // Tasks
+    async function loadTasks(){
+      const res = await fetchJSON('/api/tasks');
+      const el = document.getElementById('tasks'); el.innerHTML='';
+      const list = (res.data||[]);
+      const q = (document.getElementById('search')?.value || '').toLowerCase().trim();
+      let filtered = list.filter(t => t.title.toLowerCase().includes(q));
+      if(currentFilter === 'active') filtered = filtered.filter(t => !t.completed);
+      if(currentFilter === 'completed') filtered = filtered.filter(t => t.completed);
+      document.getElementById('tasksEmpty').style.display = filtered.length? 'none' : 'block';
+      filtered.forEach((t,idx)=>{
+        const li = document.createElement('li'); li.className='item';
+        const left = document.createElement('div'); left.className='task-left';
+        const cb = document.createElement('span'); cb.className='task-checkbox'; cb.textContent = t.completed ? '✓' : '';
+        cb.onclick = async ()=>{ await fetch('/api/tasks/'+t._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({completed:!t.completed})}); loadTasks(); };
+        const title = document.createElement('span'); title.className='task-title';
+        if(t.completed) title.classList.add('task-completed');
+        title.textContent = t.title;
+        title.ondblclick = ()=>{
+          const input = document.createElement('input'); input.className='edit-input'; input.value = t.title; title.replaceWith(input); input.focus();
+          input.onkeydown = async (ev)=>{ if(ev.key==='Enter'){ const newTitle = input.value.trim(); if(newTitle){ await fetch('/api/tasks/'+t._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle})}); loadTasks(); } } if(ev.key==='Escape'){ loadTasks(); } };
+          input.onblur = ()=> loadTasks();
+        };
+
+        left.appendChild(cb); left.appendChild(title);
+        const right = document.createElement('div'); right.className='actions';
+        const done = document.createElement('button'); done.className='icon-btn'; done.textContent = t.completed? 'Undo' : 'Done';
+        done.onclick = async ()=>{ await fetch('/api/tasks/'+t._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({completed:!t.completed})}); loadTasks(); };
+        const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=async ()=>{ if(confirm('Delete this task?')){ await fetch('/api/tasks/'+t._id,{method:'DELETE'}); loadTasks(); }};
+        right.appendChild(done); right.appendChild(del);
+        li.appendChild(left); li.appendChild(right);
+        el.appendChild(li);
+        requestAnimationFrame(()=> setTimeout(()=> li.classList.add('visible'), idx*20));
+      });
+    }
+
+    document.getElementById('taskForm').addEventListener('submit', async e=>{ e.preventDefault(); const title = document.getElementById('tTitle').value; await fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title})}); document.getElementById('tTitle').value=''; loadTasks(); });
+
+    // search and filter
+    let currentFilter = 'all';
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(b=> b.addEventListener('click', ()=>{ filterButtons.forEach(x=>x.classList.remove('active')); b.classList.add('active'); currentFilter = b.dataset.filter; loadTasks(); }));
+    document.getElementById('search').addEventListener('input', ()=> loadTasks());
+
+    // Theme toggle (persist)
+    (function(){
+      const toggle = document.getElementById('themeToggle');
+      const apply = (mode)=>{
+        if(mode==='light'){ document.body.classList.add('light'); toggle.classList.add('light'); } else { document.body.classList.remove('light'); toggle.classList.remove('light'); }
+      };
+      let mode = localStorage.getItem('lifehub_theme') || 'dark'; apply(mode);
+      toggle.addEventListener('click', ()=>{ mode = (mode==='dark')? 'light' : 'dark'; localStorage.setItem('lifehub_theme', mode); apply(mode); });
+    })();
+
+    loadTasks();
+  </script>
+</body>
+</html>
