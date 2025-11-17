@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="refresh" content="0; url=/" />
+  <title>Redirecting to Study Plan...</title>
+  <style>body{font-family:Segoe UI,Arial;padding:24px;background:#0f0f0f;color:#fff}</style>
+</head>
+<body>
+  Redirecting to Study Plan — <a href="/">click here</a> if you are not redirected.
+  <div class="theme-toggle" style="margin-left:auto">
+    <span class="small-muted">Theme</span>
+    <div id="themeToggleRedirect" class="toggle" title="Toggle theme">
+      <div class="knob"></div>
+    </div>
+  </div>
+</body>
+  Redirecting to Study Plan — <a href="/">click here</a> if you are not redirected.
+  <script>
+    // apply theme toggle on redirect page
+    (function(){
+      const toggle = document.getElementById('themeToggleRedirect');
+      if(!toggle) return;
+      const apply = (mode)=>{
+        if(mode==='light') document.body.classList.add('light'); else document.body.classList.remove('light');
+        if(mode==='light') toggle.classList.add('light'); else toggle.classList.remove('light');
+      };
+      let mode = localStorage.getItem('lifehub_theme') || 'dark';
+      apply(mode);
+      toggle.addEventListener('click', ()=>{ mode = (mode==='dark')? 'light':'dark'; localStorage.setItem('lifehub_theme', mode); apply(mode); });
+    })();
+  </script>

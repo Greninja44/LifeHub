@@ -5,14 +5,15 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/lifehu
 
 const connectDB = async () => {
   try {
+    console.log('Using MONGODB_URI:', MONGODB_URI);
     await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+      // current mongoose driver no longer requires these options
     });
     console.log('MongoDB connected:', MONGODB_URI);
   } catch (err) {
     console.error('MongoDB connection error:', err.message || err);
-    process.exit(1);
+    console.warn('Continuing without DB connection. The server will run in degraded mode until MongoDB is available.');
+    // Do not exit the process; allow the app to run for development when Mongo is not available.
   }
 };
 

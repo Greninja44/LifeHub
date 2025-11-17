@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LifeHub — Budgets</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:16px">
+        <h1 style="margin:0">LifeHub — Budgets</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="theme-toggle">
+          <span class="small-muted">Theme</span>
+          <div id="themeToggle" class="toggle" title="Toggle theme">
+            <div class="knob"></div>
+          </div>
+        </div>
+        <div class="links"><a class="pill" href="/">Study Plan</a> <a class="pill" href="/tasks.html">Tasks</a> <a class="pill" href="/pomodoro.html">Pomodoro</a></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Budgets</h2>
+      <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-bottom:8px">Track expenses and see totals in INR</div>
+      <div class="muted small">Total: <span id="budgetTotal">₹0.00</span></div>
+      <ul id="budgets"></ul>
+      <div id="budgetsEmpty" class="empty" style="display:none">No budget entries yet.</div>
+      <form id="budgetForm">
+        <input id="bTitle" placeholder="Title" required />
+        <input id="bAmount" placeholder="Amount" required type="number" step="0.01" />
+        <button class="btn-primary">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
+    async function fetchJSON(url, opts){ const r = await fetch(url, opts); return r.json(); }
+
+    async function loadBudgets(){
+      const res = await fetchJSON('/api/budgets');
+      const el = document.getElementById('budgets'); el.innerHTML='';
+      const list = (res.data||[]);
+      let total = 0;
+      list.forEach((b,idx)=>{
+        total += Number(b.amount||0);
+        const li = document.createElement('li'); li.className='item';
+        const left = document.createElement('div'); left.textContent = b.title + ' — ' + INR.format(Number(b.amount||0));
+        const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=async ()=>{ if(confirm('Delete this budget entry?')){ await fetch('/api/budgets/'+b._id,{method:'DELETE'}); loadBudgets(); }};
+        li.appendChild(left); li.appendChild(del);
+        el.appendChild(li);
+        requestAnimationFrame(()=> setTimeout(()=> li.classList.add('visible'), idx*20));
+      });
+      document.getElementById('budgetTotal').textContent = INR.format(total || 0);
+      document.getElementById('budgetsEmpty').style.display = list.length? 'none' : 'block';
+    }
+
+    document.getElementById('budgetForm').addEventListener('submit', async e=>{ e.preventDefault(); const title = document.getElementById('bTitle').value; const amount = document.getElementById('bAmount').value; await fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,amount})}); document.getElementById('bTitle').value=''; document.getElementById('bAmount').value=''; loadBudgets(); });
+
+    // Theme toggle (persist)
+    (function(){
+      const toggle = document.getElementById('themeToggle');
+      const apply = (mode)=>{ if(mode==='light'){ document.body.classList.add('light'); toggle.classList.add('light'); } else { document.body.classList.remove('light'); toggle.classList.remove('light'); } };
+      let mode = localStorage.getItem('lifehub_theme') || 'dark'; apply(mode);
+      toggle.addEventListener('click', ()=>{ mode = (mode==='dark')? 'light' : 'dark'; localStorage.setItem('lifehub_theme', mode); apply(mode); });
+    })();
+
+    loadBudgets();
+  </script>
+</body>
+</html>

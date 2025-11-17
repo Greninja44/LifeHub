@@ -1,0 +1,178 @@
+ :root{
+  --bg:#0f0f0f;
+  --panel:#111;
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  --text:#f7f7f7;
+  --muted:#bdbdbd;
+  --accent:#ffffff;
+  --accent-2: #ffffff;
+  --border: rgba(255,255,255,0.12);
+  --outline-color: rgba(255,255,255,0.14);
+  --text-stroke-color: rgba(0,0,0,0.28);
+  --focus: rgba(255,255,255,0.08);
+  --radius:12px;
+  --item-bg: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+  --input-bg: rgba(255,255,255,0.02);
+  --search-bg: rgba(255,255,255,0.02);
+  --template-desc-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  --empty-bg: rgba(255,255,255,0.01);
+  --filter-active-bg: rgba(255,255,255,0.03);
+  --placeholder-color: rgba(255,255,255,0.45);
+  --btn-text: #062024; /* primary button foreground for dark-mode background */
+  --toggle-bg: rgba(255,255,255,0.06);
+  --toggle-border: rgba(255,255,255,0.03);
+  --pill-hover-bg: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+ }
+
+/* component background variables (theme-aware) will be injected into the existing :root block */
+
+/* Light theme overrides */
+body.light{
+  --bg: #fbfbfb;
+  --panel: #ffffff;
+  --card-bg: linear-gradient(180deg, rgba(0,0,0,0.01), rgba(0,0,0,0.00));
+  --text: #0f172a;
+  --muted: #6b7280;
+  --accent: #111827;
+  --accent-2: #111827;
+  --border: rgba(0,0,0,0.12);
+  --focus: rgba(0,0,0,0.08);
+  --outline-color: rgba(0,0,0,0.18);
+  --text-stroke-color: rgba(255,255,255,0.92);
+  --item-bg: rgba(0,0,0,0.03);
+  --input-bg: rgba(0,0,0,0.03);
+  --search-bg: rgba(0,0,0,0.03);
+  --template-desc-bg: rgba(0,0,0,0.02);
+  --empty-bg: rgba(0,0,0,0.02);
+  --filter-active-bg: rgba(0,0,0,0.06);
+  --placeholder-color: rgba(15,23,42,0.45);
+  --btn-text: #ffffff;
+  --toggle-bg: rgba(0,0,0,0.06);
+  --toggle-border: rgba(0,0,0,0.03);
+  --pill-hover-bg: rgba(0,0,0,0.03);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.45;
+  background-attachment: fixed;
+}
+.container{max-width:1024px;margin:28px auto;padding:22px}
+.card{background:var(--card-bg);border-radius:var(--radius);padding:18px;margin-bottom:20px;box-shadow:0 8px 30px rgba(3,6,23,0.5);backdrop-filter: blur(6px);border:1px solid transparent}
+h1{margin:0 0 12px 0;font-weight:600}
+h2{margin:0 0 8px 0;font-weight:500;color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+form{display:flex;gap:8px;align-items:center}
+input,button{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);outline:none}
+input::placeholder{color:var(--placeholder-color)}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent-2));color: var(--btn-text);font-weight:600;cursor:pointer;box-shadow:0 8px 28px rgba(94,234,212,0.08);transition:transform .12s ease,box-shadow .12s ease}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(94,234,212,0.12)}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-danger{background:linear-gradient(90deg,#ff7b7b,#ff6b6b);color:#fff;border:none}
+.icon-btn{background:transparent;border:1px solid var(--border);padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .12s ease}
+.icon-btn:hover{color:var(--accent);transform:translateY(-2px)}
+ul{list-style:none;margin:10px 0 0 0;padding:0}
+li{padding:12px 14px;border-radius:10px;margin-bottom:10px;background:var(--item-bg);display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:transform .18s ease,background .18s ease,opacity .25s ease,box-shadow .18s ease}
+li:hover{transform:translateY(-6px);box-shadow:0 14px 40px rgba(2,6,23,0.45)}
+.task-left{display:flex;align-items:center;gap:12px;flex:1}
+.task-checkbox{width:18px;height:18px;border-radius:6px;border:1px solid var(--border);background:transparent;display:inline-block}
+.task-title{flex:1}
+.task-completed{opacity:0.6;text-decoration:line-through;color:var(--muted)}
+.actions{display:flex;gap:8px;align-items:center}
+.icon-btn{background:transparent;border:1px solid var(--border);padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .12s ease}
+.icon-btn:hover{color:var(--accent);transform:translateY(-2px)}
+
+/* layout tweaks */
+.grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+@media (max-width:1000px){.grid{grid-template-columns:1fr}}
+
+/* empty state */
+.empty{padding:18px;border-radius:8px;background:var(--empty-bg);color:var(--muted);text-align:center}
+
+/* inputs in place */
+.edit-input{background:var(--input-bg);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%}
+
+/* header controls */
+.controls{display:flex;gap:12px;align-items:center}
+.search{padding:8px 12px;border-radius:999px;background:var(--search-bg);border:1px solid var(--border);color:var(--muted);min-width:180px}
+.filter-group{display:flex;gap:8px}
+.filter-btn{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer}
+.filter-btn.active{background:var(--filter-active-bg);color:var(--accent)}
+
+/* study plan progress */
+.progress-wrap{height:12px;background:linear-gradient(90deg, rgba(0,0,0,0.06), rgba(255,255,255,0.01));border-radius:999px;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.template-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.template-select{padding:8px;border-radius:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--text)}
+
+/* Theme toggle */
+.theme-toggle{display:inline-flex;align-items:center;gap:8px}
+.toggle{width:48px;height:26px;border-radius:999px;background:var(--toggle-bg);position:relative;padding:3px;cursor:pointer;border:1px solid var(--toggle-border);transition:background .18s ease}
+.knob{width:20px;height:20px;border-radius:50%;background:var(--panel);box-shadow:0 4px 12px rgba(0,0,0,0.4);transition:transform .18s ease,background .18s ease}
+.toggle.light{background:rgba(0,0,0,0.06)}
+.toggle.light .knob{transform:translateX(22px);background:var(--text)}
+
+/* smooth theme transition */
+body{transition:background .25s ease,color .25s ease}
+ .card{transition:background .25s ease,box-shadow .25s ease,color .25s ease}
+
+/* template description hidden until hover */
+.template-row{position:relative}
+.template-desc{position:absolute;left:0;top:56px;width:340px;padding:12px;border-radius:10px;background:var(--template-desc-bg);color:var(--muted);max-height:0;overflow:hidden;opacity:0;transition:opacity .18s ease,max-height .18s ease}
+.template-row:hover .template-desc{opacity:1;max-height:240px}
+
+/* Pomodoro timer styles */
+.pomodoro{display:flex;flex-direction:column;align-items:center;gap:12px}
+.time-display{font-size:28px;font-weight:600}
+.timer-controls{display:flex;gap:8px}
+.small-muted{color:var(--muted);font-size:12px}
+.ring-wrap{width:140px;height:140px;display:grid;place-items:center}
+.ring-svg{transform:rotate(-90deg)}
+.mode-badge{padding:6px 10px;border-radius:999px;background:var(--input-bg);font-size:13px}
+.muted{color:var(--muted);font-size:13px}
+.small{font-size:13px}
+.item{opacity:0;transform:translateY(6px) scale(.995)}
+.item.visible{opacity:1;transform:translateY(0) scale(1)}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.links{display:flex;gap:12px}
+.pill{padding:8px 12px;border-radius:999px;background:transparent;border:1px solid var(--border);font-size:13px;color:var(--text);transition:all .12s ease}
+.pill:hover{background:var(--pill-hover-bg);transform:translateY(-2px)}
+@media (max-width:640px){.container{margin:12px;padding:12px}form{flex-direction:column;align-items:stretch}button{width:100%}}
+
+/* subtle focus style */
+input:focus, button:focus{box-shadow:0 6px 24px var(--focus);border-color:var(--accent-2)}
+
+/* Unified borders and contrast helpers so elements remain visible in both themes */
+/* This overrides the multiple rgba(...) borders above to use a theme-aware variable. */
+input, button, .card, .task-checkbox, .icon-btn, .filter-btn, .template-select, .search, .pill, .template-desc, .edit-input {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04) inset;
+}
+
+/* Subtle outline/stroke on text to keep letters legible on high-contrast backgrounds */
+h1, h2, p, li, .task-title, .small, .muted {
+  -webkit-text-stroke: 0.28px var(--text-stroke-color);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+
+/* Use the theme-aware focus ring */
+input:focus, button:focus { box-shadow: 0 0 0 4px var(--focus); }
+
+/* stronger visible outlines for buttons and text in both themes */
+button, .icon-btn, .filter-btn, .pill {
+  transition: box-shadow .12s ease, transform .12s ease, border-color .12s ease;
+}
+button:hover, .icon-btn:hover, .filter-btn:hover, .pill:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* make text contrast clearer on very light backgrounds (small devices) */
+@media (max-width:640px){
+  h1, h2 { -webkit-text-stroke: 0.3px var(--text-stroke-color); }
+}
