@@ -5,11 +5,18 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/lifehu
 
 const connectDB = async () => {
   try {
+
     console.log('Using MONGODB_URI:', MONGODB_URI);
     await mongoose.connect(MONGODB_URI, {
       // current mongoose driver no longer requires these options
     });
     console.log('MongoDB connected:', MONGODB_URI);
+
+    // Modern mongoose (v6+) no longer requires useNewUrlParser/useUnifiedTopology
+  await mongoose.connect(MONGODB_URI);
+  // keep the original success message (check mark) for compatibility with logs
+  console.log('✅ MongoDB connected:', MONGODB_URI);
+
   } catch (err) {
     console.error('MongoDB connection error:', err.message || err);
     console.warn('Continuing without DB connection. The server will run in degraded mode until MongoDB is available.');
