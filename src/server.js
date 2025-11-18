@@ -11,9 +11,7 @@ const insightsRouter = require('../routes/insights');
 
 const mongoose = require('mongoose');
 
-
-// NOTE: require from src -> routes inside src
-const tasksRouter = require('../routes/tasks'); // ← use ./routes/tasks if tasks.js is under src/routes
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
