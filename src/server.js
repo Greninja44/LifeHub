@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- MongoDB Connection ---
 connectDB();
-=======
+
 mongoose.connect('mongodb://127.0.0.1:27017/lifehub')
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ Connection error:', err));
