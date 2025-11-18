@@ -51,7 +51,7 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, status: 'ok', time: new Date().toISOString() });
 });
 
- SPA fallback
+// For SPA fallback
 // behavior, add a careful route that excludes API paths.
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
