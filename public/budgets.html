@@ -1,11 +1,13 @@
 <!doctype html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>LifeHub — Budgets</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
   <div class="container">
     <div class="topbar">
@@ -19,57 +21,172 @@
             <div class="knob"></div>
           </div>
         </div>
-        <div class="links"><a class="pill" href="/">Study Plan</a> <a class="pill" href="/tasks.html">Tasks</a> <a class="pill" href="/pomodoro.html">Pomodoro</a></div>
+        <div class="links"><a class="pill" href="/">Study Plan</a> <a class="pill" href="/tasks.html">Tasks</a> <a
+            class="pill" href="/pomodoro.html">Pomodoro</a></div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Budgets</h2>
-      <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-bottom:8px">Track expenses and see totals in INR</div>
-      <div class="muted small">Total: <span id="budgetTotal">₹0.00</span></div>
-      <ul id="budgets"></ul>
-      <div id="budgetsEmpty" class="empty" style="display:none">No budget entries yet.</div>
-      <form id="budgetForm">
-        <input id="bTitle" placeholder="Title" required />
-        <input id="bAmount" placeholder="Amount" required type="number" step="0.01" />
-        <button class="btn-primary">Add</button>
-      </form>
+    <div class="card grid">
+      <div>
+        <h2>Budgets</h2>
+        <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-bottom:8px">Track expenses and see totals
+          in INR</div>
+        <div class="muted small">Total: <span id="budgetTotal">₹0.00</span></div>
+
+        <div class="controls" style="margin-top:12px;margin-bottom:12px">
+          <div class="filter-group">
+            <select id="categoryFilter" class="template-select">
+              <option value="all">All categories</option>
+            </select>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <button id="manageCats" class="btn-ghost">Manage Categories</button>
+          </div>
+        </div>
+
+        <form id="budgetForm" style="margin-top:14px">
+          <input id="bTitle" placeholder="Title" required />
+          <input id="bAmount" placeholder="Amount" required type="number" step="0.01" />
+          <select id="bCategory" class="template-select" style="min-width:140px">
+          </select>
+          <button type="submit" class="btn-primary">Add</button>
+        </form>
+
+        <ul id="budgets"></ul>
+        <div id="budgetsEmpty" class="empty" style="display:none">No budget entries yet.</div>
+      </div>
+
+      <aside>
+        <div class="card" style="padding:14px">
+          <h3 style="margin-top:0;margin-bottom:8px">Spending by Category</h3>
+          <canvas id="budgetChart" width="360" height="260"></canvas>
+          <div id="chartLegend" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3 style="margin:0 0 8px 0">Categories</h3>
+          <div id="categoriesList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <form id="catForm" style="display:flex;gap:8px;margin-top:10px">
+            <input id="catName" placeholder="Category name" required />
+            <input id="catSymbol" placeholder="Symbol (emoji)" style="width:80px" />
+            <button class="btn-primary">Add</button>
+          </form>
+        </div>
+      </aside>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
-    async function fetchJSON(url, opts){ const r = await fetch(url, opts); return r.json(); }
+    document.addEventListener('DOMContentLoaded', () => {
+      const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
+      async function fetchJSON(url, opts) { const r = await fetch(url, opts); if(!r.ok) throw new Error('Network response not ok: '+r.status); return r.json(); }
 
-    async function loadBudgets(){
-      const res = await fetchJSON('/api/budgets');
-      const el = document.getElementById('budgets'); el.innerHTML='';
-      const list = (res.data||[]);
-      let total = 0;
-      list.forEach((b,idx)=>{
-        total += Number(b.amount||0);
-        const li = document.createElement('li'); li.className='item';
-        const left = document.createElement('div'); left.textContent = b.title + ' — ' + INR.format(Number(b.amount||0));
-        const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=async ()=>{ if(confirm('Delete this budget entry?')){ await fetch('/api/budgets/'+b._id,{method:'DELETE'}); loadBudgets(); }};
-        li.appendChild(left); li.appendChild(del);
-        el.appendChild(li);
-        requestAnimationFrame(()=> setTimeout(()=> li.classList.add('visible'), idx*20));
-      });
-      document.getElementById('budgetTotal').textContent = INR.format(total || 0);
-      document.getElementById('budgetsEmpty').style.display = list.length? 'none' : 'block';
-    }
+      function log(...args){ try{ console.log.apply(console,args); }catch(e){} }
 
-    document.getElementById('budgetForm').addEventListener('submit', async e=>{ e.preventDefault(); const title = document.getElementById('bTitle').value; const amount = document.getElementById('bAmount').value; await fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,amount})}); document.getElementById('bTitle').value=''; document.getElementById('bAmount').value=''; loadBudgets(); });
+      // --- Utilities ---
+      function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>"'`]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;", '`': '&#96;' }[s])); }
 
-    // Theme toggle (persist)
-    (function(){
-      const toggle = document.getElementById('themeToggle');
-      const apply = (mode)=>{ if(mode==='light'){ document.body.classList.add('light'); toggle.classList.add('light'); } else { document.body.classList.remove('light'); toggle.classList.remove('light'); } };
-      let mode = localStorage.getItem('lifehub_theme') || 'dark'; apply(mode);
-      toggle.addEventListener('click', ()=>{ mode = (mode==='dark')? 'light' : 'dark'; localStorage.setItem('lifehub_theme', mode); apply(mode); });
-    })();
+      // --- Category management (local storage) ---
+      const DEFAULT_CATEGORIES = [
+        { id: 'food', name: 'Food', symbol: '🍔' },
+        { id: 'transport', name: 'Transport', symbol: '🚌' },
+        { id: 'bills', name: 'Bills', symbol: '💡' },
+        { id: 'entertainment', name: 'Entertainment', symbol: '🎬' },
+        { id: 'shopping', name: 'Shopping', symbol: '🛍️' },
+        { id: 'general', name: 'General', symbol: '💳' }
+      ];
 
-    loadBudgets();
+      function loadCategories() { try { const s = localStorage.getItem('lifehub_categories'); if (!s) return DEFAULT_CATEGORIES.slice(); const parsed = JSON.parse(s); return parsed && parsed.length ? parsed : DEFAULT_CATEGORIES.slice(); } catch (e) { return DEFAULT_CATEGORIES.slice(); } }
+      function saveCategories(arr) { localStorage.setItem('lifehub_categories', JSON.stringify(arr)); }
+      function getCategorySymbol(idOrName) { const cats = loadCategories(); const c = cats.find(x => x.id === idOrName || x.name === idOrName); return c ? c.symbol : '' }
+
+      function populateCategorySelect() { const sel = document.getElementById('bCategory'); if(!sel) return; sel.innerHTML = ''; loadCategories().forEach(c => { const opt = document.createElement('option'); opt.value = c.id; opt.textContent = `${c.symbol ? c.symbol + ' ' : ''}${c.name}`; sel.appendChild(opt); }); }
+
+      function renderCategories() { const list = loadCategories(); const container = document.getElementById('categoriesList'); if(!container) return; container.innerHTML = ''; list.forEach(c => { const row = document.createElement('div'); row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.justifyContent = 'space-between'; row.style.gap = '8px'; row.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><div style=\"font-size:18px\">${escapeHtml(c.symbol || '')}</div><div><strong>${escapeHtml(c.name)}</strong><div class=\"small muted\">${escapeHtml(c.id)}</div></div></div>`; const del = document.createElement('button'); del.className = 'icon-btn'; del.textContent = 'Remove'; del.onclick = () => { if (confirm('Remove category? Existing items will keep their category id.')) { const cats = loadCategories().filter(x => x.id !== c.id); saveCategories(cats); renderCategories(); populateCategorySelect(); } }; row.appendChild(del); container.appendChild(row); }); }
+
+      function populateCategoryFilter() { const filter = document.getElementById('categoryFilter'); if(!filter) return; const cats = loadCategories(); filter.innerHTML = '<option value="all">All categories</option>'; cats.forEach(c => { const opt = document.createElement('option'); opt.value = c.id; opt.textContent = `${c.symbol ? c.symbol + ' ' : ''}${c.name}`; filter.appendChild(opt); }); filter.onchange = () => { // repaint using current data
+        loadBudgets();
+      }; }
+
+      // --- Chart handling ---
+      let budgetChart = null;
+      function randomColorFor(seed) { let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 360; return `hsl(${h} 70% 55% / 0.95)`; }
+
+      function renderChart(labels, data, bg) { try{ const canvas = document.getElementById('budgetChart'); if(!canvas) return; const ctx = canvas.getContext('2d'); if (budgetChart) { budgetChart.data.labels = labels; budgetChart.data.datasets[0].data = data; budgetChart.data.datasets[0].backgroundColor = bg; budgetChart.update(); return; } budgetChart = new Chart(ctx, { type: 'pie', data: { labels, datasets: [{ data, backgroundColor: bg, borderColor: 'rgba(0,0,0,0.06)', borderWidth: 1 }] }, options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const v = ctx.raw; return `${ctx.label}: ${INR.format(v)}` } } } } } } ); }catch(e){console.error('Chart error',e);} }
+
+      function renderChartLegend(labels, data, bg) { const el = document.getElementById('chartLegend'); if(!el) return; el.innerHTML = ''; labels.forEach((lab, idx) => { const row = document.createElement('div'); row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.justifyContent = 'space-between'; row.style.gap = '8px'; row.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:4px;background:${bg[idx]}"></div><div>${lab}</div></div><div style="font-weight:600">${INR.format(data[idx] || 0)}</div>`; el.appendChild(row); }); }
+
+      function updateChartWithData(list) { try{ const grouped = {}; list.forEach(i => { const k = i.category || 'general'; grouped[k] = (grouped[k] || 0) + Number(i.amount || 0); }); const labels = []; const data = []; const bg = []; const cats = loadCategories(); Object.entries(grouped).forEach(([k, v]) => { const cat = cats.find(c => c.id === k) || { name: k, symbol: '' }; labels.push(`${cat.symbol ? cat.symbol + ' ' : ''}${cat.name}`); data.push(v); bg.push(randomColorFor(k)); }); renderChart(labels, data, bg); renderChartLegend(labels, data, bg); }catch(e){console.error('updateChartWithData',e);} }
+
+      // --- Rendering budgets list ---
+      async function loadBudgets() {
+        try{
+          const res = await fetchJSON('/api/budgets');
+          const el = document.getElementById('budgets'); if(!el) return; el.innerHTML = '';
+          const list = (res.data || []);
+          // apply filter
+          const f = (document.getElementById('categoryFilter') || {}).value || 'all';
+          const filtered = f === 'all' ? list : list.filter(i => i.category === f);
+          let total = 0;
+          filtered.forEach((b, idx) => {
+            total += Number(b.amount || 0);
+            const li = document.createElement('li'); li.className = 'item';
+            const left = document.createElement('div');
+            const symbol = (b.category && getCategorySymbol(b.category)) ? getCategorySymbol(b.category) + ' ' : '';
+            left.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><div style=\"font-size:18px\">${symbol}</div><div>${escapeHtml(b.title)}<div class=\"small muted\">${escapeHtml(b.category || 'general')}</div></div></div>`;
+            const right = document.createElement('div'); right.style.display = 'flex'; right.style.gap = '8px'; right.style.alignItems = 'center';
+            const amt = document.createElement('div'); amt.style.fontWeight = '600'; amt.textContent = INR.format(Number(b.amount || 0));
+            const del = document.createElement('button'); del.className = 'icon-btn'; del.textContent = 'Delete'; del.onclick = async () => { if (confirm('Delete this budget entry?')) { await fetch('/api/budgets/' + b._id, { method: 'DELETE' }); loadBudgets(); } };
+            right.appendChild(amt); right.appendChild(del);
+            li.appendChild(left); li.appendChild(right);
+            el.appendChild(li);
+            requestAnimationFrame(() => setTimeout(() => li.classList.add('visible'), idx * 20));
+          });
+          document.getElementById('budgetTotal').textContent = INR.format(total || 0);
+          document.getElementById('budgetsEmpty').style.display = filtered.length ? 'none' : 'block';
+          updateChartWithData(list);
+        }catch(e){ console.error('loadBudgets error',e); }
+      }
+
+      // --- Form handlers ---
+      const budgetForm = document.getElementById('budgetForm');
+      if(budgetForm){
+        budgetForm.addEventListener('submit', async e => {
+          try{
+            e.preventDefault();
+            const title = (document.getElementById('bTitle') || {}).value || '';
+            const amount = (document.getElementById('bAmount') || {}).value || '';
+            const category = (document.getElementById('bCategory') || {}).value || 'general';
+            if(!title || !amount){ alert('Title and amount are required'); return; }
+            const payload = { title, amount, category };
+            log('Posting budget', payload);
+            const r = await fetch('/api/budgets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if(!r.ok){ const txt = await r.text(); throw new Error('Failed to save: '+r.status+' '+txt); }
+            document.getElementById('bTitle').value = ''; document.getElementById('bAmount').value = '';
+            await loadBudgets();
+          }catch(err){ console.error('submit budget error',err); alert('Could not save expense: '+ (err.message||err)); }
+        });
+      }
+
+      // --- Category form ---
+      const catForm = document.getElementById('catForm');
+      if(catForm){
+        catForm.addEventListener('submit', e => {
+          try{
+            e.preventDefault(); const name = (document.getElementById('catName') || {}).value.trim(); const symbol = (document.getElementById('catSymbol') || {}).value.trim() || ''; if (!name) return; const id = name.toLowerCase().replace(/\s+/g, '-'); const cats = loadCategories(); // prevent duplicates
+            if (cats.find(c => c.id === id)) { alert('Category exists'); return; }
+            cats.push({ id, name, symbol }); saveCategories(cats); renderCategories(); populateCategorySelect(); document.getElementById('catName').value = ''; document.getElementById('catSymbol').value = '';
+          }catch(e){ console.error('catForm submit',e); }
+        });
+      }
+
+      const manageBtn = document.getElementById('manageCats'); if(manageBtn) manageBtn.addEventListener('click', ()=>{ document.getElementById('catName').focus(); });
+
+      // --- Init ---
+      populateCategorySelect(); renderCategories(); populateCategoryFilter(); loadBudgets();
+    });
   </script>
 </body>
+
 </html>

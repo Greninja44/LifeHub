@@ -5,12 +5,28 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>LifeHub — Study Plan</title>
   <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* Calendar widget styles (subtle, compact) */
+    .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .cal-header #calMonthYear{font-weight:600}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px}
+    .cal-day-name{font-size:11px;color:var(--muted);text-align:center}
+    .cal-cell{min-height:34px;background:var(--card-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer}
+    .cal-cell.today{outline:2px solid rgba(100,180,255,0.16)}
+    .cal-cell.has-event{background:linear-gradient(90deg, rgba(255,245,200,0.03), var(--card-bg))}
+    .cal-cell.empty{background:transparent;cursor:default}
+    #calEvents{margin-top:8px;list-style:none;padding:0}
+    #calEvents li{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:6px;background:var(--panel-bg);margin-bottom:6px}
+    #calForm{display:flex;gap:8px;margin-top:6px}
+    #calForm input[type=date]{width:40%}
+    #calForm input[type=text]{flex:1}
+  </style>
 </head>
 <body>
   <div class="container">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:16px;flex-direction:column;align-items:flex-start">
-        <h1 style="margin:0">Study Plan</h1>
+        <h1 style="margin:0">LifeHub - Study Plan</h1>
         <div class="brand-sub" style="color:var(--muted);font-size:13px;margin-top:6px">Organize study plans, track progress, and stay focused</div>
       </div>
         <div style="display:flex;align-items:center;gap:12px">
@@ -58,7 +74,30 @@
         </div>
       </div>
 
-      <!-- Budgets removed from dashboard — use /budgets.html -->
+      <!-- Right column: Calendar + small widgets -->
+      <div>
+        <div class="card">
+          <section>
+            <h2>Calendar</h2>
+            <div id="calendarWidget">
+              <div class="cal-header">
+                <button id="calPrev" class="icon-btn">◀</button>
+                <div id="calMonthYear"></div>
+                <button id="calNext" class="icon-btn">▶</button>
+              </div>
+              <div id="calGrid" class="cal-grid"></div>
+
+              <form id="calForm">
+                <input type="date" id="calDate" required />
+                <input type="text" id="calTitle" placeholder="Event title" required />
+                <button class="btn-primary">Add Event</button>
+              </form>
+
+              <ul id="calEvents"></ul>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
 
     <!-- Pomodoro moved to its own page: /pomodoro.html -->
@@ -86,10 +125,8 @@
         left.appendChild(title); left.appendChild(progressWrap);
 
         const right = document.createElement('div'); right.className='actions';
-        const inc = document.createElement('button'); inc.className='icon-btn'; inc.textContent='+10%'; inc.onclick=async ()=>{ const p = Math.min(100,(s.progress||0)+10); await fetch('/api/studyplans/'+s._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({progress:p})}); loadAll(); };
-        const dec = document.createElement('button'); dec.className='icon-btn'; dec.textContent='-10%'; dec.onclick=async ()=>{ const p = Math.max(0,(s.progress||0)-10); await fetch('/api/studyplans/'+s._id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({progress:p})}); loadAll(); };
         const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=async ()=>{ if(confirm('Delete this study plan?')){ await fetch('/api/studyplans/'+s._id,{method:'DELETE'}); loadAll(); }};
-        right.appendChild(inc); right.appendChild(dec); right.appendChild(del);
+          right.appendChild(del);
         li.appendChild(left); li.appendChild(right);
         el.appendChild(li);
         // animate progress after append
@@ -113,12 +150,58 @@
         el.appendChild(li);
         requestAnimationFrame(()=> setTimeout(()=> li.classList.add('visible'), idx*20));
       });
+      // remove any previously inserted empty-note(s) to avoid duplicates
+      try{
+        const parent = el.parentNode;
+        parent.querySelectorAll('.empty').forEach(n=>n.remove());
+      }catch(e){/* ignore */}
       if(!list.length){ const note = document.createElement('div'); note.className='empty'; note.textContent='No insights — jot down a thought.'; el.parentNode.insertBefore(note, el.nextSibling); }
     }
 
+    // Calendar widget (localStorage-backed)
+    const CAL_KEY = 'lifehub_calendar_events';
+    function loadCalendarEvents(){ try{return JSON.parse(localStorage.getItem(CAL_KEY)||'[]')}catch(e){return []} }
+    function saveCalendarEvents(arr){ localStorage.setItem(CAL_KEY, JSON.stringify(arr)); }
+    const calState = { year: new Date().getFullYear(), month: new Date().getMonth(), selectedDate: null };
+
+    function renderCalendar(){
+      const month = calState.month, year = calState.year;
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month+1, 0);
+      const grid = document.getElementById('calGrid'); if(!grid) return;
+      grid.innerHTML = '';
+      document.getElementById('calMonthYear').textContent = first.toLocaleString(undefined,{month:'long', year:'numeric'});
+      const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      dayNames.forEach(d=>{ const dh=document.createElement('div'); dh.className='cal-day-name'; dh.textContent=d; grid.appendChild(dh); });
+      const startDay = first.getDay();
+      for(let i=0;i<startDay;i++){ const e = document.createElement('div'); e.className='cal-cell empty'; grid.appendChild(e); }
+      const events = loadCalendarEvents();
+      const todayStr = new Date().toISOString().slice(0,10);
+      for(let d=1; d<=last.getDate(); d++){
+        const date = new Date(year, month, d);
+        const ds = date.toISOString().slice(0,10);
+        const cell = document.createElement('div'); cell.className='cal-cell'; cell.textContent = d;
+        cell.dataset.date = ds;
+        const evCount = events.filter(e=>e.date===ds).length;
+        if(evCount) cell.classList.add('has-event');
+        if(ds===todayStr) cell.classList.add('today');
+        cell.addEventListener('click', ()=>{ calState.selectedDate = ds; document.getElementById('calDate').value = ds; renderEventsList(); });
+        grid.appendChild(cell);
+      }
+    }
+
+    function renderEventsList(){ const ul = document.getElementById('calEvents'); if(!ul) return; ul.innerHTML=''; const sel = calState.selectedDate || document.getElementById('calDate').value || new Date().toISOString().slice(0,10); const events = loadCalendarEvents().filter(e=>e.date===sel); if(!events.length){ const li=document.createElement('li'); li.className='empty'; li.textContent='No events for this date.'; ul.appendChild(li); return; } events.forEach(ev=>{ const li=document.createElement('li'); const left=document.createElement('div'); left.textContent = ev.title; const right=document.createElement('div'); right.style.display='flex'; right.style.gap='8px'; const del=document.createElement('button'); del.className='icon-btn'; del.textContent='Delete'; del.onclick=()=>{ if(confirm('Delete event?')){ const arr = loadCalendarEvents().filter(x=>x.id!==ev.id); saveCalendarEvents(arr); renderCalendar(); renderEventsList(); } }; right.appendChild(del); li.appendChild(left); li.appendChild(right); ul.appendChild(li); }); }
+
+    // calendar form and navigation
+    document.addEventListener('click', ()=>{});
+    document.getElementById('calPrev')?.addEventListener('click', ()=>{ calState.month--; if(calState.month<0){ calState.month=11; calState.year--; } renderCalendar(); renderEventsList(); });
+    document.getElementById('calNext')?.addEventListener('click', ()=>{ calState.month++; if(calState.month>11){ calState.month=0; calState.year++; } renderCalendar(); renderEventsList(); });
+    document.getElementById('calForm')?.addEventListener('submit', e=>{ e.preventDefault(); const date = document.getElementById('calDate').value; const title = document.getElementById('calTitle').value.trim(); if(!date||!title) return alert('Provide date and title'); const arr = loadCalendarEvents(); const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6); arr.push({ id, date, title }); saveCalendarEvents(arr); document.getElementById('calTitle').value=''; calState.selectedDate = date; renderCalendar(); renderEventsList(); });
+
+
     // Pomodoro moved to /pomodoro.html (timer logic exists there)
 
-    async function loadAll(){ await Promise.all([loadStudy(), loadInsights()]); }
+    async function loadAll(){ await Promise.all([loadStudy(), loadInsights()]); renderCalendar(); renderEventsList(); }
 
     // Theme toggle (dark/light) - persisted in localStorage
     (function(){

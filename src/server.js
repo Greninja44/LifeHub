@@ -9,8 +9,6 @@ const studyPlansRouter = require('../routes/studyplans');
 const budgetsRouter = require('../routes/budgets');
 const insightsRouter = require('../routes/insights');
 
-const mongoose = require('mongoose');
-
 require('dotenv').config();
 
 const app = express();
@@ -18,11 +16,8 @@ const PORT = process.env.PORT || 3000;
 
 
 // --- MongoDB Connection ---
+// Use the centralized connectDB helper (keeps logging consistent)
 connectDB();
-
-mongoose.connect('mongodb://127.0.0.1:27017/lifehub')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ Connection error:', err));
 
 app.use(cors());
 app.use(express.json());
@@ -42,7 +37,7 @@ app.get('/api', (req, res) => {
   res.json({ ok: true, message: 'LifeHub API root. Try /api/health or /api/tasks' });
 });
 
-app.use('/api/tasks', tasksRouter); // tasksRouter handles routes under /api/tasks
+// (routes already mounted above)
 
 
 app.get('/api/health', (req, res) => {
